@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-512.png">
+  <title>Mi Lista de Tareas</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .app {
+      background: white;
+      width: 100%;
+      max-width: 450px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 25px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 1.8rem;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 0.9rem;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 10px;
+      padding: 20px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    .input-area input:focus {
+      border-color: #667eea;
+    }
+
+    .input-area button {
+      padding: 12px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+    }
+
+    .input-area button:hover {
+      background: #5568d3;
+    }
+
+    .input-area button:active {
+      transform: scale(0.95);
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      padding: 15px;
+      background: #f8f9ff;
+      font-size: 0.85rem;
+      color: #666;
+    }
+
+    .stats span strong {
+      color: #667eea;
+    }
+
+    ul {
+      list-style: none;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 15px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      transition: background 0.2s;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    li:hover {
+      background: #f8f9ff;
+    }
+
+    li.completada .texto {
+      text-decoration: line-through;
+      color: #aaa;
+    }
+
+    .checkbox {
+      width: 22px;
+      height: 22px;
+      border: 2px solid #667eea;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.3s;
+    }
+
+    li.completada .checkbox {
+      background: #667eea;
+    }
+
+    li.completada .checkbox::after {
+      content: '✓';
+      color: white;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .texto {
+      flex: 1;
+      word-break: break-word;
+      cursor: pointer;
+    }
+
+    .eliminar {
+      background: none;
+      border: none;
+      color: #ff4757;
+      font-size: 1.3rem;
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 5px;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .eliminar:hover {
+      background: #ffe5e7;
+    }
+
+    .vacio {
+      text-align: center;
+      padding: 40px 20px;
+      color: #aaa;
+    }
+
+    .vacio .emoji {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <h1>📝 Mis Tareas</h1>
+      <p>Organízate y sé productivo</p>
+    </div>
+
+    <div class="input-area">
+      <input type="text" id="inputTarea" placeholder="Escribe una nueva tarea..." maxlength="100">
+      <button id="btnAgregar">Agregar</button>
+    </div>
+
+    <div class="stats">
+      <span>Total: <strong id="total">0</strong></span>
+      <span>Pendientes: <strong id="pendientes">0</strong></span>
+      <span>Completadas: <strong id="completadas">0</strong></span>
+    </div>
+
+    <ul id="listaTareas"></ul>
+  </div>
+
+  <script>
+    const inputTarea = document.getElementById('inputTarea');
+    const btnAgregar = document.getElementById('btnAgregar');
+    const listaTareas = document.getElementById('listaTareas');
+    const totalEl = document.getElementById('total');
+    const pendientesEl = document.getElementById('pendientes');
+    const completadasEl = document.getElementById('completadas');
+
+    let tareas = JSON.parse(localStorage.getItem('misTareas')) || [];
+
+    function guardar() {
+      localStorage.setItem('misTareas', JSON.stringify(tareas));
+    }
+
+    function actualizarStats() {
+      const total = tareas.length;
+      const completadas = tareas.filter(t => t.completada).length;
+      totalEl.textContent = total;
+      completadasEl.textContent = completadas;
+      pendientesEl.textContent = total - completadas;
+    }
+
+    function renderizar() {
+      listaTareas.innerHTML = '';
+
+      if (tareas.length === 0) {
+        listaTareas.innerHTML = `
+          <div class="vacio">
+            <span class="emoji">🎯</span>
+            <p>No hay tareas todavía</p>
+            <p>¡Agrega una para empezar!</p>
+          </div>
+        `;
+        actualizarStats();
+        return;
+      }
+
+      tareas.forEach((tarea, index) => {
+        const li = document.createElement('li');
+        if (tarea.completada) li.classList.add('completada');
+
+        const checkbox = document.createElement('div');
+        checkbox.className = 'checkbox';
+        checkbox.onclick = () => toggleTarea(index);
+
+        const texto = document.createElement('span');
+        texto.className = 'texto';
+        texto.textContent = tarea.texto;
+        texto.onclick = () => toggleTarea(index);
+
+        const btnEliminar = document.createElement('button');
+        btnEliminar.className = 'eliminar';
+        btnEliminar.textContent = '🗑️';
+        btnEliminar.onclick = () => eliminarTarea(index);
+
+        li.appendChild(checkbox);
+        li.appendChild(texto);
+        li.appendChild(btnEliminar);
+        listaTareas.appendChild(li);
+      });
+
+      actualizarStats();
+    }
+
+    function agregarTarea() {
+      const texto = inputTarea.value.trim();
+      if (!texto) {
+        inputTarea.focus();
+        return;
+      }
+
+      tareas.push({ texto, completada: false });
+      inputTarea.value = '';
+      inputTarea.focus();
+      guardar();
+      renderizar();
+    }
+
+    function toggleTarea(index) {
+      tareas[index].completada = !tareas[index].completada;
+      guardar();
+      renderizar();
+    }
+
+    function eliminarTarea(index) {
+      tareas.splice(index, 1);
+      guardar();
+      renderizar();
+    }
+
+    btnAgregar.addEventListener('click', agregarTarea);
+    inputTarea.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') agregarTarea();
+    });
+
+    renderizar();
+  </script>
+</body>
+</html>
